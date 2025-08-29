@@ -6,9 +6,9 @@
 PageIndex currently enables reasoning-based RAG within a single document by default.
 For users who need to search across multiple documents, we provide three best-practice workflows for different scenarios below.
 
-* [**Search by Metadata**:](tutorials/doc-search/metadata) for documents that can be distinguished by metadata.
-* [**Search by Semantics**:](tutorials/doc-search/semantics) for documents with different semantic content or cover diverse topics.
-* [**Search by Description**:](tutorials/doc-search/description) a lightweight strategy for a small number of documents.
+* [**Search by Metadata**:](doc-search/metadata) for documents that can be distinguished by metadata.
+* [**Search by Semantics**:](doc-search/semantics) for documents with different semantic content or cover diverse topics.
+* [**Search by Description**:](doc-search/description) a lightweight strategy for a small number of documents.
 
 ## 💬 Support
 
