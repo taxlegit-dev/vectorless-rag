@@ -1,7 +1,7 @@
 
 
 ## Document Search by Metadata
-<Callout>PageIndex with metadata support is in closed beta. Fill out this form to request early access to this feature.</Callout>
+<callout>PageIndex with metadata support is in closed beta. Fill out this form to request early access to this feature.</callout>
 
 For documents that can be easily distinguished by metadata, we recommend using metadata to search the documents.
 This method is ideal for the following document types:

@@ -18,7 +18,9 @@ For each query, conduct a vector-based search to get top-K chunks with their cor
 For each document, calculate a relevance score. Let N be the number of content chunks associated with each document, and let **ChunkScore**(n) be the relevance score of chunk n. The document score is computed as:
 
 
-$\text{DocScore}=\frac{1}{\sqrt{N+1}}\sum_{n=1}^N \text{ChunkScore}(n)$
+$$
+\text{DocScore}=\frac{1}{\sqrt{N+1}}\sum_{n=1}^N \text{ChunkScore}(n)
+$$
 
 - The sum aggregates relevance from all related chunks.
 - The +1 inside the square root ensures the formula handles nodes with zero chunks.
