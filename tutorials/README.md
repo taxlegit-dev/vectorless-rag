@@ -10,7 +10,6 @@ For users who need to search across multiple documents, we provide three best-pr
 * [**Search by Semantics**:](/semantics) for documents with different semantic content or cover diverse topics.
 * [**Search by Description**:](/description) a lightweight strategy for a small number of documents.
 
-
 ## 💬 Support
 
 * 🤝 [Join our Discord](https://discord.gg/VuXuf29EUj)
