@@ -120,6 +120,10 @@ CHATGPT_API_KEY=your_openai_key_here
 python3 run_pageindex.py --pdf_path /path/to/your/document.pdf
 ```
 
+<details>
+<summary>Optional parameters</summary>
+<br>
+
 You can customize the processing with additional optional arguments:
 
 ```
@@ -129,9 +133,9 @@ You can customize the processing with additional optional arguments:
 --max-tokens-per-node   Max tokens per node (default: 20000)
 --if-add-node-id        Add node ID (yes/no, default: yes)
 --if-add-node-summary   Add node summary (yes/no, default: no)
---if-add-doc-description Add doc description (yes/no, default: no)
+--if-add-doc-description Add doc description (yes/no, default: yes)
 ```
-
+</details>
 
 ---
 
