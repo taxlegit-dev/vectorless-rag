@@ -499,7 +499,6 @@ def remove_fields(data, fields=['text']):
     return data
 
 def print_toc(tree, indent=0):
-    print(tree)
     for node in tree:
         print('  ' * indent + node['title'])
         if node.get('nodes'):
