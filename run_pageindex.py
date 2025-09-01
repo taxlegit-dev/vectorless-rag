@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--if-add-node-id', type=str, default='yes',
                       help='Whether to add node id to the node')
-    parser.add_argument('--if-add-node-summary', type=str, default='no',
+    parser.add_argument('--if-add-node-summary', type=str, default='yes',
                       help='Whether to add summary to the node')
     parser.add_argument('--if-add-doc-description', type=str, default='no',
                       help='Whether to add doc description to the doc')
