@@ -69,10 +69,14 @@ if __name__ == "__main__":
         
         # Save results
         pdf_name = os.path.splitext(os.path.basename(args.pdf_path))[0]    
-        os.makedirs('./results', exist_ok=True)
+        output_dir = './results'
+        output_file = f'{output_dir}/{pdf_name}_structure.json'
+        os.makedirs(output_dir, exist_ok=True)
         
-        with open(f'./results/{pdf_name}_structure.json', 'w', encoding='utf-8') as f:
+        with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(toc_with_page_number, f, indent=2)
+        
+        print(f'Tree structure saved to: {output_file}')
             
     elif args.md_path:
         # Validate Markdown file
@@ -119,7 +123,11 @@ if __name__ == "__main__":
         
         # Save results
         md_name = os.path.splitext(os.path.basename(args.md_path))[0]    
-        os.makedirs('./results', exist_ok=True)
+        output_dir = './results'
+        output_file = f'{output_dir}/{md_name}_structure.json'
+        os.makedirs(output_dir, exist_ok=True)
         
-        with open(f'./results/{md_name}_structure.json', 'w', encoding='utf-8') as f:
+        with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(toc_with_page_number, f, indent=2, ensure_ascii=False)
+        
+        print(f'Tree structure saved to: {output_file}')
