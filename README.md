@@ -137,6 +137,19 @@ You can customize the processing with additional optional arguments:
 ```
 </details>
 
+<details>
+<summary>Markdown support</summary>
+<br>
+We also provide a markdown support for PageIndex. You can use the `-md` flag to generate a tree structure for a markdown file.
+
+```bash
+python3 run_pageindex.py --md_path /path/to/your/document.md
+```
+
+> Notice: in this function, we use "#" to determine node heading and their levels. For example, "##" is level 2, "###" is level 3, etc. Make sure your markdown file is formatted correctly. If your Markdown file was converted from a PDF or HTML, we don’t recommend using this function, since most existing conversion tools cannot preserve the original hierarchy. Instead, use our [PageIndex OCR](https://pageindex.ai/blog/ocr), which is designed to preserve the original hierarchy, to convert the PDF to a markdown file and then use this function.
+
+</details>
+
 ---
 
 # ☁️ Improved Tree Generation with PageIndex OCR
