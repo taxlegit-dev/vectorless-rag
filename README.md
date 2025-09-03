@@ -29,7 +29,7 @@
 
 Are you frustrated with vector database retrieval accuracy for long professional documents? Traditional vector-based RAG relies on semantic *similarity* rather than true *relevance*. But **similarity ≠ relevance** — what we truly need in retrieval is **relevance**, and that requires **reasoning**. When working with professional documents that demand domain expertise and multi-step reasoning, similarity search often falls short.
 
-Inspired by AlphaGo, we propose [PageIndex](https://vectify.ai/pageindex), a **reasoning-based RAG** system that simulates how **human experts** navigate and extract knowledge from long documents through **tree search**, enabling LLMs to *think* and *reason* their way to the most relevant document sections. It performs retrieval in two steps:
+Inspired by AlphaGo, we propose **[PageIndex](https://vectify.ai/pageindex)**, a **reasoning-based RAG** system that simulates how **human experts** navigate and extract knowledge from long documents through **tree search**, enabling LLMs to *think* and *reason* their way to the most relevant document sections. It performs retrieval in two steps:
 
 1. Generate a "Table-of-Contents" **tree structure index** of documents
 2. Perform reasoning-based retrieval through **tree search**
@@ -197,8 +197,8 @@ PageIndex's hierarchical indexing enabled precise navigation and extraction of r
 
 Leave a star if you like our project. Thank you!  
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/eae4ff38-48ae-4a7c-b19f-eab81201d794" width="75%">
+<p>
+  <img src="https://github.com/user-attachments/assets/eae4ff38-48ae-4a7c-b19f-eab81201d794" width="60%">
 </p>
 
 ### Connect with Us
