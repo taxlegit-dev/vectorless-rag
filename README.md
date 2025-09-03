@@ -16,8 +16,9 @@
 <p align="center">
   <a href="https://vectify.ai">🏠 Homepage</a>&nbsp; • &nbsp;
   <a href="https://dash.pageindex.ai">🖥️ Dashboard</a>&nbsp; • &nbsp;
-  <a href="https://docs.pageindex.ai/quickstart">📚 API Docs</a>&nbsp; • &nbsp;
+  <a href="https://docs.pageindex.ai/quickstart">📚 Docs</a>&nbsp; • &nbsp;
   <a href="https://discord.com/invite/VuXuf29EUj">💬 Discord</a>&nbsp; • &nbsp;
+  <a href="https://twitter.com/VectifyAI">𝕏 Twitter</a>&nbsp; • &nbsp;
   <a href="https://ii2abc2jejf.typeform.com/to/tK3AXl8T">✉️ Contact</a>&nbsp;
 </p>
   
