@@ -201,8 +201,12 @@ Leave a star if you like our project. Thank you!
   <img src="https://github.com/user-attachments/assets/eae4ff38-48ae-4a7c-b19f-eab81201d794" width="75%">
 </p>
 
-### Connect with Us  
-[𝕏 Twitter](https://x.com/VectifyAI) &nbsp;&nbsp;•&nbsp;&nbsp; [💼 LinkedIn](https://www.linkedin.com/company/vectify-ai/) &nbsp;&nbsp;•&nbsp;&nbsp; [💬 Discord](https://discord.com/invite/VuXuf29EUj) &nbsp;&nbsp;•&nbsp;&nbsp; [✉️ Contact Us](https://ii2abc2jejf.typeform.com/to/tK3AXl8T)
+### Connect with Us
+
+[![Twitter](https://img.shields.io/badge/Twitter-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/VectifyAI)&nbsp;
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/company/vectify-ai/)&nbsp;
+[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/VuXuf29EUj)&nbsp;
+[![Contact Us](https://img.shields.io/badge/Contact_Us-3B82F6?style=for-the-badge&logo=envelope&logoColor=white)](https://ii2abc2jejf.typeform.com/to/tK3AXl8T)
 
 ---
 
