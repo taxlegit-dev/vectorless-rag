@@ -183,7 +183,7 @@ PageIndex's hierarchical indexing enabled precise navigation and extraction of r
 
 # 🔎 Learn More about PageIndex
 
-- 📖 Explore our [Tutorials](https://docs.pageindex.ai/doc-search) for step-by-step guides and practical strategies, including *Document Search* and *Tree Search*.  
+- 📖 Explore our [Tutorials](https://docs.pageindex.ai/doc-search) for practical guides and strategies, including *Document Search* and *Tree Search*.  
 - 🧪 Browse the [Cookbook](https://docs.pageindex.ai/cookbook/vectorless-rag-pageindex) for practical recipes and advanced use cases.  
 - ⚙️ Refer to the [API Documentation](https://docs.pageindex.ai/quickstart) for integration details and configuration options.  
 
