@@ -1,13 +1,17 @@
 <div align="center">
   
-  <a href="https://vectify.ai/pageindex" target="_blank">
-    <img src="https://github.com/user-attachments/assets/46201e72-675b-43bc-bfbd-081cc6b65a1d" alt="PageIndex Banner" />
-  </a>
-  
-  <br/>
-  <br/>
+<a href="https://vectify.ai/pageindex" target="_blank">
+  <img src="https://github.com/user-attachments/assets/46201e72-675b-43bc-bfbd-081cc6b65a1d" alt="PageIndex Banner" />
+</a>
 
-  <p align="center"><i>Reasoning-based RAG&nbsp; ✧ &nbsp;No Vector DB&nbsp; ✧ &nbsp;No Chunking&nbsp; ✧ &nbsp;Human-like Retrieval</i></p>
+<br/>
+<br/>
+
+<p align="center">
+  <a href="https://trendshift.io/repositories/14736" target="_blank"><img src="https://trendshift.io/api/badge/repositories/14736" alt="VectifyAI%2FPageIndex | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+</p>
+
+<p align="center"><i>Reasoning-based RAG&nbsp; ✧ &nbsp;No Vector DB&nbsp; ✧ &nbsp;No Chunking&nbsp; ✧ &nbsp;Human-like Retrieval</i></p>
 
 <p align="center">
   <a href="https://vectify.ai">🏠 Homepage</a>&nbsp; • &nbsp;
