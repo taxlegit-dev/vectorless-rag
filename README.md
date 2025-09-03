@@ -121,9 +121,8 @@ python3 run_pageindex.py --pdf_path /path/to/your/document.pdf
 ```
 
 <details>
-<summary>Optional parameters</summary>
+<summary><strong>Optional parameters</strong></summary>
 <br>
-
 You can customize the processing with additional optional arguments:
 
 ```
@@ -138,7 +137,7 @@ You can customize the processing with additional optional arguments:
 </details>
 
 <details>
-<summary>Markdown support</summary>
+<summary><strong>Markdown support</strong></summary>
 <br>
 We also provide a markdown support for PageIndex. You can use the `-md` flag to generate a tree structure for a markdown file.
 
@@ -147,7 +146,6 @@ python3 run_pageindex.py --md_path /path/to/your/document.md
 ```
 
 > Notice: in this function, we use "#" to determine node heading and their levels. For example, "##" is level 2, "###" is level 3, etc. Make sure your markdown file is formatted correctly. If your Markdown file was converted from a PDF or HTML, we don’t recommend using this function, since most existing conversion tools cannot preserve the original hierarchy. Instead, use our [PageIndex OCR](https://pageindex.ai/blog/ocr), which is designed to preserve the original hierarchy, to convert the PDF to a markdown file and then use this function.
-
 </details>
 
 ---
@@ -185,11 +183,9 @@ PageIndex's hierarchical indexing enabled precise navigation and extraction of r
 
 # 🔎 Learn More about PageIndex
 
-See the [Tutorials](https://docs.pageindex.ai/doc-search) for step-by-step guides, including Document Search and Tree Search.
-
-Check out the [Cookbook](https://docs.pageindex.ai/cookbook/vectorless-rag-pageindex) for practical recipes and advanced use cases.
-
-Refer to the [API Documentation](https://docs.pageindex.ai/quickstart) for integration details and options.
+- 📖 Explore our [Tutorials](https://docs.pageindex.ai/doc-search) for step-by-step guides and practical strategies, including *Document Search* and *Tree Search*.  
+- 🧪 Browse the [Cookbook](https://docs.pageindex.ai/cookbook/vectorless-rag-pageindex) for practical recipes and advanced use cases.  
+- ⚙️ Refer to the [API Documentation](https://docs.pageindex.ai/quickstart) for integration details and configuration options.  
 
 # ⭐ Support Us
 
