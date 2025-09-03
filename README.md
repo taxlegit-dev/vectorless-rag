@@ -18,7 +18,6 @@
   <a href="https://dash.pageindex.ai">🖥️ Dashboard</a>&nbsp; • &nbsp;
   <a href="https://docs.pageindex.ai/quickstart">📚 Docs</a>&nbsp; • &nbsp;
   <a href="https://discord.com/invite/VuXuf29EUj">💬 Discord</a>&nbsp; • &nbsp;
-  <a href="https://twitter.com/VectifyAI">𝕏 Twitter</a>&nbsp; • &nbsp;
   <a href="https://ii2abc2jejf.typeform.com/to/tK3AXl8T">✉️ Contact</a>&nbsp;
 </p>
   
@@ -188,16 +187,23 @@ PageIndex's hierarchical indexing enabled precise navigation and extraction of r
 
 # 🔎 Learn More about PageIndex
 
+### Resources & Guides
+
 - 📖 Explore our [Tutorials](https://docs.pageindex.ai/doc-search) for practical guides and strategies, including *Document Search* and *Tree Search*.  
 - 🧪 Browse the [Cookbook](https://docs.pageindex.ai/cookbook/vectorless-rag-pageindex) for practical recipes and advanced use cases.  
-- ⚙️ Refer to the [API Documentation](https://docs.pageindex.ai/quickstart) for integration details and configuration options.  
+- ⚙️ Refer to the [API Documentation](https://docs.pageindex.ai/quickstart) for integration details and configuration options.
 
-# ⭐ Support Us
+### ⭐ Support Us
 
-Leave a star if you like our project — thank you!  
+Leave a star if you like our project. Thank you!  
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/eae4ff38-48ae-4a7c-b19f-eab81201d794" width="75%">
 </p>
+
+### Connect with Us  
+[𝕏 Twitter](https://x.com/VectifyAI) &nbsp;&nbsp;•&nbsp;&nbsp; [💼 LinkedIn](https://www.linkedin.com/company/vectify-ai/) &nbsp;&nbsp;•&nbsp;&nbsp; [💬 Discord](https://discord.com/invite/VuXuf29EUj) &nbsp;&nbsp;•&nbsp;&nbsp; [✉️ Contact Us](https://ii2abc2jejf.typeform.com/to/tK3AXl8T)
+
+---
 
 © 2025 [Vectify AI](https://vectify.ai)
