@@ -25,6 +25,10 @@
 
 ---
 
+🚨 **New Release:** [PageIndex MCP](https://github.com/VectifyAI/pageindex-mcp)
+
+Bring PageIndex into Claude, Cursor, and any MCP-enabled agent. Chat to long PDFs the human-like, reasoning-based way 📖
+
 #  📄 Introduction to PageIndex
 
 Are you frustrated with vector database retrieval accuracy for long professional documents? Traditional vector-based RAG relies on semantic *similarity* rather than true *relevance*. But **similarity ≠ relevance** — what we truly need in retrieval is **relevance**, and that requires **reasoning**. When working with professional documents that demand domain expertise and multi-step reasoning, similarity search often falls short.
