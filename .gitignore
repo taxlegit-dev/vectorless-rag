@@ -1,15 +1,27 @@
-.ipynb_checkpoints
-__pycache__
-files
-index
-temp/*
+# Python
+__pycache__/
+*.pyc
+
+# env
+.env
+venv/
+
+# RAG data
+index/
+files/
+parts/
+temp/
+json_results/
+
+# vector db
+*.parquet
 chroma-collections.parquet
 chroma-embeddings.parquet
-.DS_Store
-.env*
-notebook
-SDK/*
-log/*
+
+# logs
 logs/
-parts/*
-json_results/*
+log/
+
+# misc
+.DS_Store
+.ipynb_checkpoints
