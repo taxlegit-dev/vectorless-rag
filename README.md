@@ -269,4 +269,5 @@ Leave us a star 🌟 if you like our project. Thank you!
 
 © 2025 [Vectify AI](https://vectify.ai)
 #   v e c t o r l e s s - r a g  
+ #   v e c t o r l e s s - r a g  
  
