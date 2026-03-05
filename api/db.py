@@ -161,3 +161,25 @@ def get_rag_document_tree(doc_id: str) -> Optional[dict]:
             if not row:
                 return None
             return row[0]
+
+
+def get_latest_rag_document_by_domains(domains: Optional[List[str]]) -> Optional[tuple[str, dict]]:
+    if not domains:
+        return None
+    domains_literal = _domains_literal(domains)
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, tree_json
+                FROM rag_documents
+                WHERE domains && %s::domain[]
+                ORDER BY created_at DESC
+                LIMIT 1;
+                """,
+                (domains_literal,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            return str(row[0]), row[1]

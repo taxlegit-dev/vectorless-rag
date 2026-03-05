@@ -11,7 +11,12 @@ from docx import Document
 
 from pageindex import page_index, md_to_tree
 from pageindex.utils import create_clean_structure_for_description, generate_doc_description
-from api.db import get_rag_document_tree, init_db, insert_rag_document
+from api.db import (
+    get_latest_rag_document_by_domains,
+    get_rag_document_tree,
+    init_db,
+    insert_rag_document,
+)
 from api.retrieval import tree_search
 
 app = FastAPI(title="PageIndex RAG API")
@@ -217,22 +222,35 @@ async def upload_document(
 
 
 class QueryRequest(BaseModel):
-    document_id: str
+    document_id: Optional[str] = None
     question: str
     model: str = "gpt-4o-2024-11-20"
     max_hops: int = 6
+    domains: Optional[list[str]] = None
 
 
 @app.post("/rag/query")
 def query_document(req: QueryRequest) -> dict:
-    tree_json = get_rag_document_tree(req.document_id)
+    doc_id = req.document_id
+    tree_json = None
+
+    if doc_id:
+        tree_json = get_rag_document_tree(doc_id)
+    else:
+        result = get_latest_rag_document_by_domains(req.domains)
+        if result:
+            doc_id, tree_json = result
+
     if not tree_json:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Document not found (provide document_id or domains)",
+        )
 
     leaf, path = tree_search(req.question, tree_json, model=req.model, max_hops=req.max_hops)
 
     return {
-        "document_id": req.document_id,
+        "document_id": doc_id,
         "path": [node.get("title") for node in path],
         "node": {
             "title": leaf.get("title"),
