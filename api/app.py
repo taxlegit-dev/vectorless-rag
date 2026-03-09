@@ -1,4 +1,5 @@
 import os
+import re
 import tempfile
 from io import BytesIO
 from typing import Optional
@@ -232,6 +233,103 @@ class QueryRequest(BaseModel):    # Request body structure define karta hai.
     domains: Optional[list[str]] = None
 
 
+_STOPWORDS = {
+    "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with",
+    "is", "are", "was", "were", "be", "by", "as", "at", "from", "this",
+    "that", "these", "those", "process", "processes",
+}
+
+_ACRONYM_EXPANSIONS = {
+    "p2p": "procurement to pay",
+    "o2c": "order to cash",
+    "r2r": "record to report",
+    "icfr": "internal control over financial reporting",
+}
+
+_GENERIC_TITLES = {
+    "overview",
+    "introduction",
+    "summary",
+    "table of contents",
+    "toc",
+    "contents",
+}
+
+
+def _normalize_question(question: str) -> str:
+    q = (question or "").strip()
+    if not q:
+        return ""
+
+    # Remove short acronym-only parentheses like "(P2P)" to reduce mismatch noise.
+    def _strip_acronym_parens(match: re.Match) -> str:
+        inner = (match.group(1) or "").strip()
+        if inner and len(inner) <= 10 and re.fullmatch(r"[A-Z0-9&/ -]+", inner):
+            return ""
+        return match.group(0)
+
+    q = re.sub(r"\(([^)]{1,20})\)", _strip_acronym_parens, q)
+    q = q.replace("/", " ").replace("-", " ")
+    q = re.sub(r"\s+", " ", q).strip()
+
+    # Expand common process acronyms when present.
+    tokens = re.findall(r"[A-Za-z0-9]+", q.lower())
+    expansions = [ _ACRONYM_EXPANSIONS[t] for t in tokens if t in _ACRONYM_EXPANSIONS ]
+    if expansions:
+        q = (q + " " + " ".join(expansions)).strip()
+    return q
+
+
+def _tokenize(text: str) -> list[str]:
+    tokens = re.findall(r"[A-Za-z0-9]+", (text or "").lower())
+    return [t for t in tokens if t not in _STOPWORDS and len(t) > 1]
+
+
+def _leaf_content(leaf: dict) -> str:
+    for key in ("text", "summary", "prefix_summary"):
+        val = leaf.get(key)
+        if isinstance(val, str) and val.strip():
+            return val
+    return ""
+
+
+def _is_generic_title(title: str) -> bool:
+    if not title:
+        return False
+    t = title.strip().lower()
+    return t in _GENERIC_TITLES
+
+
+def _score_leaf(question: str, leaf: dict, path: list[dict]) -> float:
+    content = _leaf_content(leaf)
+    title = leaf.get("title") or ""
+    path_titles = " ".join([n.get("title", "") for n in (path or [])])
+    combined = " ".join([title, path_titles, content])
+
+    q_tokens = set(_tokenize(question))
+    if not q_tokens:
+        return 0.0
+    c_tokens = set(_tokenize(combined))
+    overlap = len(q_tokens & c_tokens) / max(1, len(q_tokens))
+
+    length_bonus = min(len(content) / 500.0, 1.0)
+    title_boost = 0.1 if any(t in (title or "").lower() for t in q_tokens) else 0.0
+    generic_penalty = 0.1 if _is_generic_title(title) else 0.0
+    return overlap + length_bonus + title_boost - generic_penalty
+
+
+def _is_low_quality(question: str, leaf: dict, path: list[dict]) -> bool:
+    content = _leaf_content(leaf)
+    if not content.strip():
+        return True
+    q_tokens = set(_tokenize(question))
+    c_tokens = set(_tokenize(content))
+    overlap = len(q_tokens & c_tokens) / max(1, len(q_tokens)) if q_tokens else 0.0
+    if len(content) < 40 and overlap < 0.15:
+        return True
+    return False
+
+
 @app.post("/rag/query")
 def query_document(req: QueryRequest) -> dict:
     doc_id = req.document_id
@@ -255,25 +353,45 @@ def query_document(req: QueryRequest) -> dict:
     best_leaf = None
     best_path = None
     best_doc_id = None
+    best_score = float("-inf")
+
+    best_overall_leaf = None
+    best_overall_path = None
+    best_overall_doc_id = None
+    best_overall_score = float("-inf")
+
+    normalized_question = _normalize_question(req.question)
 
     for d_id, tree in all_docs:
         try:
             leaf, path = tree_search(
-                req.question, tree, 
+                normalized_question or req.question,
                 model=req.model, 
                 max_hops=req.max_hops
             )
-            # Pehla valid result le lo
-            if best_leaf is None:
-                best_leaf = leaf
-                best_path = path
-                best_doc_id = d_id
+            score = _score_leaf(normalized_question or req.question, leaf, path)
+            if score > best_overall_score:
+                best_overall_score = score
+                best_overall_leaf = leaf
+                best_overall_path = path
+                best_overall_doc_id = d_id
+
+            if not _is_low_quality(normalized_question or req.question, leaf, path):
+                if score > best_score:
+                    best_score = score
+                    best_leaf = leaf
+                    best_path = path
+                    best_doc_id = d_id
         except Exception as e:
             print(f"tree_search failed for doc {d_id}: {e}")
             continue
 
-    if not best_leaf:
-        raise HTTPException(status_code=500, detail="Search failed across all documents")
+    if best_leaf is None:
+        if best_overall_leaf is None:
+            raise HTTPException(status_code=500, detail="Search failed across all documents")
+        best_leaf = best_overall_leaf
+        best_path = best_overall_path
+        best_doc_id = best_overall_doc_id
 
     return {
         "document_id": best_doc_id,
@@ -284,5 +402,5 @@ def query_document(req: QueryRequest) -> dict:
             "start_index": best_leaf.get("start_index"),
             "end_index": best_leaf.get("end_index"),
         },
-        "context": best_leaf.get("text", ""),
+        "context": _leaf_content(best_leaf),
     }
