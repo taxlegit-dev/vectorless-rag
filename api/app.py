@@ -14,6 +14,7 @@ from pageindex.utils import create_clean_structure_for_description, generate_doc
 
 from api.db import (
     get_latest_rag_document_by_domains,
+    get_all_rag_documents_by_domains,
     get_rag_document_tree,
     init_db,
     insert_rag_document,
@@ -234,31 +235,54 @@ class QueryRequest(BaseModel):    # Request body structure define karta hai.
 @app.post("/rag/query")
 def query_document(req: QueryRequest) -> dict:
     doc_id = req.document_id
-    tree_json = None
-
+    
     if doc_id:
+        # Specific document ID diya hai
         tree_json = get_rag_document_tree(doc_id)
+        if not tree_json:
+            raise HTTPException(status_code=404, detail="Document not found")
+        all_docs = [(doc_id, tree_json)]
     else:
-        result = get_latest_rag_document_by_domains(req.domains)
-        if result:
-            doc_id, tree_json = result
+        # Sabhi matching documents fetch karo
+        all_docs = get_all_rag_documents_by_domains(req.domains)
+        if not all_docs:
+            raise HTTPException(
+                status_code=404,
+                detail="Document not found (provide document_id or domains)",
+            )
 
-    if not tree_json:
-        raise HTTPException(
-            status_code=404,
-            detail="Document not found (provide document_id or domains)",
-        )
+    # Har document mein search karo, best context lo
+    best_leaf = None
+    best_path = None
+    best_doc_id = None
 
-    leaf, path = tree_search(req.question, tree_json, model=req.model, max_hops=req.max_hops)
+    for d_id, tree in all_docs:
+        try:
+            leaf, path = tree_search(
+                req.question, tree, 
+                model=req.model, 
+                max_hops=req.max_hops
+            )
+            # Pehla valid result le lo
+            if best_leaf is None:
+                best_leaf = leaf
+                best_path = path
+                best_doc_id = d_id
+        except Exception as e:
+            print(f"tree_search failed for doc {d_id}: {e}")
+            continue
+
+    if not best_leaf:
+        raise HTTPException(status_code=500, detail="Search failed across all documents")
 
     return {
-        "document_id": doc_id,
-        "path": [node.get("title") for node in path],
+        "document_id": best_doc_id,
+        "path": [node.get("title") for node in best_path],
         "node": {
-            "title": leaf.get("title"),
-            "node_id": leaf.get("node_id"),
-            "start_index": leaf.get("start_index"),
-            "end_index": leaf.get("end_index"),
+            "title": best_leaf.get("title"),
+            "node_id": best_leaf.get("node_id"),
+            "start_index": best_leaf.get("start_index"),
+            "end_index": best_leaf.get("end_index"),
         },
-        "context": leaf.get("text", ""),
+        "context": best_leaf.get("text", ""),
     }
