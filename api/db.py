@@ -39,7 +39,7 @@ pool = ConnectionPool(
     configure=_configure_conn,
 )
 
-
+# database schema start
 def init_db() -> None:
     direct_url = os.getenv("DIRECT_URL")
     dsn = _normalize_dsn(direct_url) if direct_url else _normalize_dsn(DATABASE_URL)
@@ -100,7 +100,7 @@ def init_db() -> None:
             for stmt in ddl:
                 cur.execute(stmt)
         conn.commit()
-
+# databse schema end
 
 def _domains_literal(domains: Optional[List[str]]) -> str:
     if not domains:

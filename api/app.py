@@ -9,28 +9,29 @@ from pydantic import BaseModel
 import pandas as pd
 from docx import Document
 
-from pageindex import page_index, md_to_tree
-from pageindex.utils import create_clean_structure_for_description, generate_doc_description
+from pageindex import page_index, md_to_tree #Ye PageIndex library hai jo document ko tree structure me convert karta hai.
+from pageindex.utils import create_clean_structure_for_description, generate_doc_description #Ye document summary generate karne ke liye functions hain.
+
 from api.db import (
     get_latest_rag_document_by_domains,
     get_rag_document_tree,
     init_db,
     insert_rag_document,
 )
-from api.retrieval import tree_search
+from api.retrieval import tree_search #👉 Tree me semantic search karne ke liye.
 
-app = FastAPI(title="PageIndex RAG API")
+app = FastAPI(title="PageIndex RAG API") #API server create karta hai.
 
-_cors_env = os.getenv("CORS_ORIGINS", "")
-if _cors_env.strip():
+_cors_env = os.getenv("CORS_ORIGINS", "") #Environment variable se allowed domains read karta hai.
+if _cors_env.strip(): #Agar .env me CORS defined hai → use karo.
     _origins = [o.strip() for o in _cors_env.split(",") if o.strip()]
-else:
+else:  #Default frontend URLs.
     _origins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
 
-app.add_middleware(
+app.add_middleware(   #CORS middleware add karta hai.
     CORSMiddleware,
     allow_origins=_origins,
     allow_credentials=True,
@@ -38,24 +39,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
+@app.on_event("startup")  #Server start hone par:
+# 👉 database tables create ho jate hain
 def _startup() -> None:
     init_db()
 
 
-def _parse_domains(domains: Optional[str]) -> list[str]:
+def _parse_domains(domains: Optional[str]) -> list[str]: #Domain Parse Function , Input example:ICFR,CSR,NGO ---> Output: ["ICFR","CSR","NGO"]
     if not domains:
         return []
     parts = [d.strip().upper() for d in domains.split(",") if d.strip()]
     return parts
 
 
-def _wrap_as_markdown(title: str, content: str) -> str:
+def _wrap_as_markdown(title: str, content: str) -> str:   # Text ko markdown format me convert karta hai.
     clean_title = title.strip() or "Document"
     return f"# {clean_title}\n\n{content.strip()}\n"
 
 
-def _markdown_from_docx(file_bytes: bytes, filename: str) -> str:
+def _markdown_from_docx(file_bytes: bytes, filename: str) -> str: # DOCX file ko markdown me convert karta hai.
     doc = Document(BytesIO(file_bytes))
     lines = []
     has_heading = False
@@ -83,12 +85,12 @@ def _markdown_from_docx(file_bytes: bytes, filename: str) -> str:
     return "\n\n".join(lines) + "\n"
 
 
-def _markdown_from_xlsx(file_bytes: bytes, filename: str) -> str:
-    xls = pd.ExcelFile(BytesIO(file_bytes))
+def _markdown_from_xlsx(file_bytes: bytes, filename: str) -> str:   # Excel ko convert karta hai.
+    xls = pd.ExcelFile(BytesIO(file_bytes), engine="openpyxl")
     lines = [f"# {os.path.splitext(filename)[0] or 'Spreadsheet'}"]
 
     for sheet in xls.sheet_names:
-        df = pd.read_excel(xls, sheet_name=sheet)
+        df = pd.read_excel(xls, sheet_name=sheet, engine="openpyxl")
         lines.append(f"## Sheet: {sheet}")
         lines.append("```csv")
         lines.append(df.to_csv(index=False).strip())
@@ -97,13 +99,13 @@ def _markdown_from_xlsx(file_bytes: bytes, filename: str) -> str:
     return "\n\n".join(lines) + "\n"
 
 
-def _markdown_from_csv(file_bytes: bytes, filename: str) -> str:
+def _markdown_from_csv(file_bytes: bytes, filename: str) -> str:  # CSV ko markdown me convert karta hai.
     df = pd.read_csv(BytesIO(file_bytes))
     title = os.path.splitext(filename)[0] or "CSV"
     return _wrap_as_markdown(title, "```csv\n" + df.to_csv(index=False).strip() + "\n```")
 
 
-async def _tree_from_markdown(
+async def _tree_from_markdown(   # Ye function markdown ko document tree me convert karta hai.
     markdown_text: str,
     filename: str,
     model: str,
@@ -221,7 +223,7 @@ async def upload_document(
     }
 
 
-class QueryRequest(BaseModel):
+class QueryRequest(BaseModel):    # Request body structure define karta hai.
     document_id: Optional[str] = None
     question: str
     model: str = "gpt-4o-2024-11-20"
