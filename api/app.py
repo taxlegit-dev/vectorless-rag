@@ -366,6 +366,7 @@ def query_document(req: QueryRequest) -> dict:
         try:
             leaf, path = tree_search(
                 normalized_question or req.question,
+                tree,
                 model=req.model, 
                 max_hops=req.max_hops
             )
