@@ -400,8 +400,6 @@ def query_document(req: QueryRequest) -> dict:
         "node": {
             "title": best_leaf.get("title"),
             "node_id": best_leaf.get("node_id"),
-            "start_index": best_leaf.get("start_index"),
-            "end_index": best_leaf.get("end_index"),
         },
         "context": _leaf_content(best_leaf),
     }
