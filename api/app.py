@@ -54,6 +54,13 @@ def _parse_domains(domains: Optional[str]) -> list[str]: #Domain Parse Function 
     return parts
 
 
+def _parse_index_array(index_array: Optional[str]) -> list[str]:
+    if not index_array:
+        return []
+    parts = [w.strip() for w in index_array.split(",") if w.strip()]
+    return parts
+
+
 def _wrap_as_markdown(title: str, content: str) -> str:   # Text ko markdown format me convert karta hai.
     clean_title = title.strip() or "Document"
     return f"# {clean_title}\n\n{content.strip()}\n"
@@ -145,11 +152,13 @@ async def upload_document(
     file: UploadFile = File(...),
     uploaded_by_email: str = Form(...),
     domains: Optional[str] = Form(None),
+    index_array: Optional[str] = Form(None),
     model: str = Form("gpt-4o-2024-11-20"),
     if_add_node_text: str = Form("yes"),
-    if_add_node_summary: str = Form("no"),
-    if_add_doc_description: str = Form("no"),
+    if_add_node_summary: str = Form("yes"),
+    if_add_doc_description: str = Form("yes"),
 ) -> dict:
+    if_add_node_summary = "yes"
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing filename")
 
@@ -210,10 +219,13 @@ async def upload_document(
         doc_summary = generate_doc_description(clean_structure, model=model)
     else:
         doc_summary = None
+    index_words = _parse_index_array(index_array)
     doc_id = insert_rag_document(
         source_file_name=file.filename,
         uploaded_by_email=uploaded_by_email,
         domains=_parse_domains(domains),
+        index_array=index_words,
+        summarization=True,
         tree_json=tree,
         doc_summary=doc_summary,
     )
@@ -222,6 +234,8 @@ async def upload_document(
         "document_id": doc_id,
         "doc_name": tree.get("doc_name"),
         "doc_summary": doc_summary,
+        "index_array": index_words,
+        "summarization": True,
     }
 
 

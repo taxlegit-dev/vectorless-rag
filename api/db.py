@@ -66,12 +66,16 @@ def init_db() -> None:
             source_file_name TEXT,
             uploaded_by_email TEXT NOT NULL REFERENCES users(email) ON DELETE CASCADE,
             domains domain[] NOT NULL DEFAULT '{}',
+            index_array TEXT[] NOT NULL DEFAULT '{}',
+            summarization BOOLEAN NOT NULL DEFAULT TRUE,
             tree_json JSONB NOT NULL,
             doc_summary TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
         """,
+        "ALTER TABLE rag_documents ADD COLUMN IF NOT EXISTS index_array TEXT[] NOT NULL DEFAULT '{}';",
+        "ALTER TABLE rag_documents ADD COLUMN IF NOT EXISTS summarization BOOLEAN NOT NULL DEFAULT TRUE;",
         "DROP TRIGGER IF EXISTS set_updated_at_rag_documents ON rag_documents;",
         """
         CREATE OR REPLACE FUNCTION set_updated_at()
@@ -111,16 +115,25 @@ def _domains_literal(domains: Optional[List[str]]) -> str:
     return "{" + ",".join(cleaned) + "}"
 
 
+def _clean_index_array(values: Optional[List[str]]) -> List[str]:
+    if not values:
+        return []
+    return [v.strip() for v in values if v and v.strip()]
+
+
 def insert_rag_document(
     *,
     source_file_name: Optional[str],
     uploaded_by_email: str,
     domains: Optional[List[str]],
+    index_array: Optional[List[str]] = None,
+    summarization: bool = True,
     tree_json: dict,
     doc_summary: Optional[str] = None,
 ) -> str:
     domains_literal = _domains_literal(domains)
     tree_json_str = json.dumps(tree_json, ensure_ascii=False)
+    cleaned_index_array = _clean_index_array(index_array)
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
@@ -131,15 +144,17 @@ def insert_rag_document(
             cur.execute(
                 """
                 INSERT INTO rag_documents (
-                    source_file_name, uploaded_by_email, domains, tree_json, doc_summary
+                    source_file_name, uploaded_by_email, domains, index_array, summarization, tree_json, doc_summary
                 ) VALUES (
-                    %s, %s, %s::domain[], %s::jsonb, %s
+                    %s, %s, %s::domain[], %s::text[], %s, %s::jsonb, %s
                 ) RETURNING id;
                 """,
                 (
                     source_file_name,
                     uploaded_by_email,
                     domains_literal,
+                    cleaned_index_array,
+                    summarization,
                     tree_json_str,
                     doc_summary,
                 ),
