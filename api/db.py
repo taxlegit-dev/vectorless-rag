@@ -217,3 +217,27 @@ def get_all_rag_documents_by_domains(domains: Optional[List[str]]) -> List[tuple
             )
             rows = cur.fetchall()
             return [(str(row[0]), row[1]) for row in rows]
+
+
+def get_all_rag_documents_with_meta_by_domains(
+    domains: Optional[List[str]],
+) -> List[tuple[str, dict, List[str], Optional[str]]]:
+    if not domains:
+        return []
+    domains_literal = _domains_literal(domains)
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, tree_json, index_array, doc_summary
+                FROM rag_documents
+                WHERE domains && %s::domain[]
+                ORDER BY created_at DESC;
+                """,
+                (domains_literal,),
+            )
+            rows = cur.fetchall()
+            return [
+                (str(row[0]), row[1], row[2] or [], row[3])
+                for row in rows
+            ]

@@ -11,11 +11,10 @@ import pandas as pd
 from docx import Document
 
 from pageindex import page_index, md_to_tree #Ye PageIndex library hai jo document ko tree structure me convert karta hai.
-from pageindex.utils import create_clean_structure_for_description, generate_doc_description #Ye document summary generate karne ke liye functions hain.
+from pageindex.utils import ChatGPT_API, create_clean_structure_for_description, generate_doc_description #Ye document summary generate karne ke liye functions hain.
 
 from api.db import (
-    get_latest_rag_document_by_domains,
-    get_all_rag_documents_by_domains,
+    get_all_rag_documents_with_meta_by_domains,
     get_rag_document_tree,
     init_db,
     insert_rag_document,
@@ -269,6 +268,8 @@ _GENERIC_TITLES = {
     "contents",
 }
 
+_MAX_CONTEXT_CHARS = 800
+
 
 def _normalize_question(question: str) -> str:
     q = (question or "").strip()
@@ -299,12 +300,51 @@ def _tokenize(text: str) -> list[str]:
     return [t for t in tokens if t not in _STOPWORDS and len(t) > 1]
 
 
+def _normalize_index_terms(index_array: Optional[list[str]]) -> set[str]:
+    terms: set[str] = set()
+    for raw in index_array or []:
+        if not raw:
+            continue
+        value = raw.strip().lower()
+        if not value:
+            continue
+        terms.add(value)
+        tokens = re.findall(r"[A-Za-z0-9]+", value)
+        if len(tokens) > 1:
+            terms.update(tokens)
+    return terms
+
+
+def _index_match(query_terms: set[str], index_array: Optional[list[str]]) -> bool:
+    if not query_terms or not index_array:
+        return False
+    index_terms = _normalize_index_terms(index_array)
+    return bool(query_terms & index_terms)
+
+
+def _summary_match(query_terms: set[str], doc_summary: Optional[str]) -> bool:
+    if not query_terms or not doc_summary:
+        return False
+    summary_terms = set(_tokenize(doc_summary))
+    return bool(query_terms & summary_terms)
+
+
 def _leaf_content(leaf: dict) -> str:
     for key in ("text", "summary", "prefix_summary"):
         val = leaf.get(key)
         if isinstance(val, str) and val.strip():
             return val
     return ""
+
+
+def _sanitize_context(text: str) -> str:
+    if not text:
+        return ""
+    cleaned = re.sub(r"```csv[\s\S]*?```", "", text, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+    if len(cleaned) > _MAX_CONTEXT_CHARS:
+        cleaned = cleaned[:_MAX_CONTEXT_CHARS].rstrip()
+    return cleaned
 
 
 def _is_generic_title(title: str) -> bool:
@@ -347,21 +387,57 @@ def _is_low_quality(question: str, leaf: dict, path: list[dict]) -> bool:
 @app.post("/rag/query")
 def query_document(req: QueryRequest) -> dict:
     doc_id = req.document_id
-    
+
+    normalized_question = _normalize_question(req.question)
+    question_text = normalized_question or req.question
+    query_terms = set(_tokenize(question_text))
+
     if doc_id:
         # Specific document ID diya hai
         tree_json = get_rag_document_tree(doc_id)
         if not tree_json:
             raise HTTPException(status_code=404, detail="Document not found")
-        all_docs = [(doc_id, tree_json)]
+        candidate_docs = [(doc_id, tree_json, [], None)]
     else:
-        # Sabhi matching documents fetch karo
-        all_docs = get_all_rag_documents_by_domains(req.domains)
+        # Sabhi matching documents fetch karo (with meta for index/summary match)
+        all_docs = get_all_rag_documents_with_meta_by_domains(req.domains)
         if not all_docs:
             raise HTTPException(
                 status_code=404,
                 detail="Document not found (provide document_id or domains)",
             )
+
+        if query_terms:
+            index_matched = [
+                doc for doc in all_docs if _index_match(query_terms, doc[2])
+            ]
+            if index_matched:
+                candidate_docs = index_matched
+            else:
+                summary_matched = [
+                    doc for doc in all_docs if _summary_match(query_terms, doc[3])
+                ]
+                if summary_matched:
+                    candidate_docs = summary_matched
+                else:
+                    fallback = ChatGPT_API(
+                        model=req.model,
+                        prompt=(
+                            "Answer the user's question clearly and concisely.\n\n"
+                            f"Question: {question_text}"
+                        ),
+                    )
+                    return {
+                        "document_id": None,
+                        "path": [],
+                        "node": {
+                            "title": "fallback",
+                            "node_id": None,
+                        },
+                        "context": fallback,
+                    }
+        else:
+            candidate_docs = all_docs
 
     # Har document mein search karo, best context lo
     best_leaf = None
@@ -374,24 +450,22 @@ def query_document(req: QueryRequest) -> dict:
     best_overall_doc_id = None
     best_overall_score = float("-inf")
 
-    normalized_question = _normalize_question(req.question)
-
-    for d_id, tree in all_docs:
+    for d_id, tree, _, _ in candidate_docs:
         try:
             leaf, path = tree_search(
-                normalized_question or req.question,
+                question_text,
                 tree,
                 model=req.model, 
                 max_hops=req.max_hops
             )
-            score = _score_leaf(normalized_question or req.question, leaf, path)
+            score = _score_leaf(question_text, leaf, path)
             if score > best_overall_score:
                 best_overall_score = score
                 best_overall_leaf = leaf
                 best_overall_path = path
                 best_overall_doc_id = d_id
 
-            if not _is_low_quality(normalized_question or req.question, leaf, path):
+            if not _is_low_quality(question_text, leaf, path):
                 if score > best_score:
                     best_score = score
                     best_leaf = leaf
@@ -415,5 +489,5 @@ def query_document(req: QueryRequest) -> dict:
             "title": best_leaf.get("title"),
             "node_id": best_leaf.get("node_id"),
         },
-        "context": _leaf_content(best_leaf),
+        "context": _sanitize_context(_leaf_content(best_leaf)),
     }
