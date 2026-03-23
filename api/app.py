@@ -146,98 +146,6 @@ async def _tree_from_markdown(   # Ye function markdown ko document tree me conv
     return tree
 
 
-@app.post("/rag/documents")
-async def upload_document(
-    file: UploadFile = File(...),
-    uploaded_by_email: str = Form(...),
-    domains: Optional[str] = Form(None),
-    index_array: Optional[str] = Form(None),
-    model: str = Form("gpt-4o-2024-11-20"),
-    if_add_node_text: str = Form("yes"),
-    if_add_node_summary: str = Form("yes"),
-    if_add_doc_description: str = Form("yes"),
-) -> dict:
-    if_add_node_summary = "yes"
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="Missing filename")
-
-    ext = os.path.splitext(file.filename)[1].lower()
-    allowed = {".pdf", ".md", ".markdown", ".txt", ".docx", ".xlsx", ".csv"}
-    if ext not in allowed:
-        raise HTTPException(
-            status_code=400,
-            detail="Unsupported file type. Use PDF, MD, TXT, DOCX, XLSX, or CSV.",
-        )
-
-    file_bytes = await file.read()
-    if not file_bytes:
-        raise HTTPException(status_code=400, detail="Empty file")
-
-    if ext == ".pdf":
-        doc = BytesIO(file_bytes)
-        tree = page_index(
-            doc,
-            model=model,
-            if_add_node_text=if_add_node_text,
-            if_add_node_summary=if_add_node_summary,
-            if_add_doc_description="no",
-            if_add_node_id="yes",
-        )
-    else:
-        if ext in {".md", ".markdown"}:
-            content = file_bytes.decode("utf-8", errors="replace")
-            markdown_text = content
-        elif ext == ".txt":
-            content = file_bytes.decode("utf-8", errors="replace")
-            markdown_text = _wrap_as_markdown(os.path.splitext(file.filename)[0], content)
-        elif ext == ".docx":
-            markdown_text = _markdown_from_docx(file_bytes, file.filename)
-        elif ext == ".xlsx":
-            markdown_text = _markdown_from_xlsx(file_bytes, file.filename)
-        elif ext == ".csv":
-            markdown_text = _markdown_from_csv(file_bytes, file.filename)
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported file type")
-
-        tree = await _tree_from_markdown(
-            markdown_text=markdown_text,
-            filename=file.filename,
-            model=model,
-            if_add_node_text=if_add_node_text,
-            if_add_node_summary=if_add_node_summary,
-            if_add_doc_description="no",
-        )
-
-    if not isinstance(tree, dict):
-        raise HTTPException(status_code=500, detail="Failed to generate document tree")
-
-    tree.pop("doc_description", None)
-    structure = tree.get("structure")
-    if structure and if_add_node_summary.lower() == "yes":
-        clean_structure = create_clean_structure_for_description(structure)
-        doc_summary = generate_doc_description(clean_structure, model=model)
-    else:
-        doc_summary = None
-    index_words = _parse_index_array(index_array)
-    doc_id = insert_rag_document(
-        source_file_name=file.filename,
-        uploaded_by_email=uploaded_by_email,
-        domains=_parse_domains(domains),
-        index_array=index_words,
-        summarization=True,
-        tree_json=tree,
-        doc_summary=doc_summary,
-    )
-
-    return {
-        "document_id": doc_id,
-        "doc_name": tree.get("doc_name"),
-        "doc_summary": doc_summary,
-        "index_array": index_words,
-        "summarization": True,
-    }
-
-
 class QueryRequest(BaseModel):    # Request body structure define karta hai.
     document_id: Optional[str] = None
     question: str
@@ -340,7 +248,8 @@ def _leaf_content(leaf: dict) -> str:
 def _sanitize_context(text: str) -> str:
     if not text:
         return ""
-    cleaned = re.sub(r"```csv[\s\S]*?```", "", text, flags=re.IGNORECASE)
+    # Keep CSV content but drop the code fences.
+    cleaned = re.sub(r"```csv\s*([\s\S]*?)```", r"\1", text, flags=re.IGNORECASE)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
     if len(cleaned) > _MAX_CONTEXT_CHARS:
         cleaned = cleaned[:_MAX_CONTEXT_CHARS].rstrip()
@@ -392,6 +301,15 @@ def query_document(req: QueryRequest) -> dict:
     question_text = normalized_question or req.question
     query_terms = set(_tokenize(question_text))
 
+    def _index_match_score(q_terms: set[str], index_array: Optional[list[str]]) -> float:
+        if not q_terms or not index_array:
+            return 0.0
+        index_terms = _normalize_index_terms(index_array)
+        if not index_terms:
+            return 0.0
+        overlap = len(q_terms & index_terms)
+        return overlap / max(1, len(q_terms))
+
     if doc_id:
         # Specific document ID diya hai
         tree_json = get_rag_document_tree(doc_id)
@@ -408,11 +326,14 @@ def query_document(req: QueryRequest) -> dict:
             )
 
         if query_terms:
-            index_matched = [
-                doc for doc in all_docs if _index_match(query_terms, doc[2])
-            ]
-            if index_matched:
-                candidate_docs = index_matched
+            index_scored = []
+            for doc in all_docs:
+                score = _index_match_score(query_terms, doc[2])
+                if score > 0:
+                    index_scored.append((score, doc))
+            if index_scored:
+                index_scored.sort(key=lambda item: item[0], reverse=True)
+                candidate_docs = [index_scored[0][1]]
             else:
                 summary_matched = [
                     doc for doc in all_docs if _summary_match(query_terms, doc[3])
