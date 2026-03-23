@@ -149,7 +149,7 @@ async def _tree_from_markdown(   # Ye function markdown ko document tree me conv
 class QueryRequest(BaseModel):    # Request body structure define karta hai.
     document_id: Optional[str] = None
     question: str
-    model: str = "gpt-4o-2024-11-20"
+    model: str = "gpt-4o-mini"
     max_hops: int = 6
     domains: Optional[list[str]] = None
 
@@ -163,7 +163,6 @@ _STOPWORDS = {
 _ACRONYM_EXPANSIONS = {
     "p2p": "procurement to pay",
     "o2c": "order to cash",
-    "r2r": "record to report",
     "icfr": "internal control over financial reporting",
 }
 
@@ -176,7 +175,7 @@ _GENERIC_TITLES = {
     "contents",
 }
 
-_MAX_CONTEXT_CHARS = 800
+_MAX_CONTEXT_CHARS = 8000
 
 
 def _normalize_question(question: str) -> str:
