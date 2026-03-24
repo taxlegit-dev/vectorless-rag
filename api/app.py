@@ -175,7 +175,15 @@ _GENERIC_TITLES = {
     "contents",
 }
 
-_MAX_CONTEXT_CHARS = 8000
+_MAX_CONTEXT_CHARS = 20000
+_EXTRACTION_TOP_K = 10
+_EXTRACTION_KEYWORDS = (
+    "subprocess",
+    "sub-process",
+    "list",
+    "all subprocess",
+    "sub process names",
+)
 
 
 def _normalize_question(question: str) -> str:
@@ -255,6 +263,42 @@ def _sanitize_context(text: str) -> str:
     return cleaned
 
 
+def _is_extraction_query(question: str) -> bool:
+    q = (question or "").lower()
+    return any(k in q for k in _EXTRACTION_KEYWORDS)
+
+
+def _get_children(node: dict) -> list[dict]:
+    for key in ("children", "nodes", "items", "sections"):
+        val = node.get(key)
+        if isinstance(val, list) and val:
+            return val
+    return []
+
+
+def _collect_leaves(node: dict, path: Optional[list[dict]] = None) -> list[tuple[dict, list[dict]]]:
+    if path is None:
+        path = []
+    if not isinstance(node, dict):
+        return []
+    children = _get_children(node)
+    if not children:
+        return [(node, path)]
+    leaves: list[tuple[dict, list[dict]]] = []
+    for child in children:
+        leaves.extend(_collect_leaves(child, path + [node]))
+    return leaves
+
+
+def _score_leaf_for_extraction(question: str, leaf: dict, path: list[dict]) -> float:
+    score = _score_leaf(question, leaf, path)
+    content = _leaf_content(leaf).lower()
+    title = (leaf.get("title") or "").lower()
+    if re.search(r"\bsub[- ]?process\b", content) or re.search(r"\bsub[- ]?process\b", title):
+        score += 0.2
+    return score
+
+
 def _is_generic_title(title: str) -> bool:
     if not title:
         return False
@@ -299,6 +343,7 @@ def query_document(req: QueryRequest) -> dict:
     normalized_question = _normalize_question(req.question)
     question_text = normalized_question or req.question
     query_terms = set(_tokenize(question_text))
+    is_extraction = _is_extraction_query(question_text)
 
     def _index_match_score(q_terms: set[str], index_array: Optional[list[str]]) -> float:
         if not q_terms or not index_array:
@@ -370,8 +415,55 @@ def query_document(req: QueryRequest) -> dict:
     best_overall_doc_id = None
     best_overall_score = float("-inf")
 
+    best_multi_context = None
+    best_multi_leaf = None
+    best_multi_path = None
+    best_multi_doc_id = None
+    best_multi_score = float("-inf")
+
     for d_id, tree, _, _ in candidate_docs:
         try:
+            if is_extraction:
+                leaves = _collect_leaves(tree)
+                scored: list[tuple[float, dict, list[dict]]] = []
+                for leaf, path in leaves:
+                    content = _leaf_content(leaf)
+                    if not content.strip():
+                        continue
+                    content_lower = content.lower()
+                    if "sub-process" not in content_lower and "subprocess" not in content_lower:
+                        continue
+                    score = _score_leaf_for_extraction(question_text, leaf, path)
+                    scored.append((score, leaf, path))
+
+                if scored:
+                    scored.sort(key=lambda item: item[0], reverse=True)
+                    top = scored[:_EXTRACTION_TOP_K]
+                    combined = "\n\n".join(
+                        [
+                            _leaf_content(leaf)
+                            for _, leaf, _ in top
+                            if (
+                                "sub-process" in _leaf_content(leaf).lower()
+                                or "subprocess" in _leaf_content(leaf).lower()
+                            )
+                        ]
+                    )
+                    combined = re.sub(r",,+", ",", combined)
+                    print("TOTAL LEAVES:", len(leaves))
+                    print("FILTERED LEAVES:", len(scored))
+                    print("TOP SELECTED:", len(top))
+                    print("CONTEXT LENGTH:", len(combined))
+                    combined = _sanitize_context(combined)
+                    doc_score = sum(s for s, _, _ in top)
+                    if doc_score > best_multi_score:
+                        best_multi_score = doc_score
+                        best_multi_context = combined
+                        best_multi_leaf = top[0][1]
+                        best_multi_path = top[0][2]
+                        best_multi_doc_id = d_id
+                continue
+
             leaf, path = tree_search(
                 question_text,
                 tree,
@@ -401,6 +493,17 @@ def query_document(req: QueryRequest) -> dict:
         best_leaf = best_overall_leaf
         best_path = best_overall_path
         best_doc_id = best_overall_doc_id
+
+    if is_extraction and best_multi_context:
+        return {
+            "document_id": best_multi_doc_id,
+            "path": [node.get("title") for node in (best_multi_path or [])],
+            "node": {
+                "title": best_multi_leaf.get("title") if best_multi_leaf else None,
+                "node_id": best_multi_leaf.get("node_id") if best_multi_leaf else None,
+            },
+            "context": best_multi_context,
+        }
 
     return {
         "document_id": best_doc_id,
