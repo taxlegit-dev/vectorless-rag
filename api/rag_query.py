@@ -12,7 +12,7 @@ from api.retrieval import tree_search
 router = APIRouter()
 
 
-class QueryRequest(BaseModel):  # Request body structure define karta hai.
+class QueryRequest(BaseModel):
     document_id: Optional[str] = None
     question: str
     model: str = "gpt-4o-mini"
@@ -155,7 +155,6 @@ def _leaf_content(leaf: dict) -> str:
 def _sanitize_context(text: str) -> str:
     if not text:
         return ""
-    # Keep CSV content but drop the code fences.
     cleaned = re.sub(r"```csv\s*([\s\S]*?)```", r"\1", text, flags=re.IGNORECASE)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
     if len(cleaned) > _MAX_CONTEXT_CHARS:
@@ -364,7 +363,8 @@ def query_document(req: QueryRequest) -> dict:
                         selected.extend(group_items[:_EXTRACTION_PER_GROUP])
 
                     if len(selected) < _EXTRACTION_TOP_K:
-                        remaining = [s for s in scored if s not in selected]
+                        selected_set = set(id(s) for s in selected)
+                        remaining = [s for s in scored if id(s) not in selected_set]
                         selected.extend(remaining[: _EXTRACTION_TOP_K - len(selected)])
 
                     top = selected[:_EXTRACTION_TOP_K]
@@ -374,10 +374,6 @@ def query_document(req: QueryRequest) -> dict:
                     top_for_context = sorted(top, key=lambda item: len(_leaf_content(item[1])))
                     combined = "\n\n".join([_leaf_content(leaf) for _, leaf, _, _ in top_for_context])
                     combined = re.sub(r",,+", ",", combined)
-                    print("TOTAL LEAVES:", len(leaves))
-                    print("FILTERED LEAVES:", len(scored))
-                    print("TOP SELECTED:", len(top))
-                    print("CONTEXT LENGTH:", len(combined))
                     combined = _sanitize_context(combined)
                     doc_score = sum(s for s, _, _, _ in top)
                     if doc_score > best_multi_score:

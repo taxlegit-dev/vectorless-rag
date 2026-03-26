@@ -17,6 +17,16 @@ from api.db import insert_rag_document
 
 router = APIRouter()
 
+_SNO_KEYWORDS: frozenset[str] = frozenset({
+    "s.no.", "s no.", "sno", "sl.no.", "sl no",
+    "s.no", "sno.", "s no", "sr.no.", "sr no",
+    "serial no", "serial no.", "s. no.", "s. no",
+})
+_SUBPROCESS_KEYWORDS: tuple[str, ...] = (
+    "sub-process", "subprocess", "sub process",
+    "process head", "process name", "sub-processes",
+)
+
 
 def _parse_domains(domains: Optional[str]) -> list[str]:
     if not domains:
@@ -76,19 +86,10 @@ def _detect_subprocess_column(df: pd.DataFrame) -> tuple[Optional[str], Optional
     for col in df.columns:
         col_str = str(col).lower().strip()
 
-        # Detect S.no column
-        if col_str in (
-            "s.no.", "s no.", "sno", "sl.no.", "sl no",
-            "s.no", "sno.", "s no", "sr.no.", "sr no",
-            "serial no", "serial no.", "s. no.", "s. no",
-        ):
+        if col_str in _SNO_KEYWORDS:
             sno_col = col
 
-        # Detect subprocess column
-        if any(k in col_str for k in (
-            "sub-process", "subprocess", "sub process",
-            "process head", "process name", "sub-processes",
-        )):
+        if any(k in col_str for k in _SUBPROCESS_KEYWORDS):
             subprocess_col = col
 
     return sno_col, subprocess_col
@@ -137,33 +138,29 @@ def _split_sheet_by_subprocess(
     return chunks
 
 
-def _find_header_row(xls: pd.ExcelFile, sheet_name: str) -> int:
+def _find_header_row(xls: pd.ExcelFile, sheet_name: str) -> tuple[int, pd.DataFrame]:
     """
     Scans rows to find the one that contains both a S.no-like column and a
     subprocess-like column — this is the real header row when the sheet has
     preamble rows (company name, title, blank rows, etc.).
-    Returns the 0-based row index to pass as `header=` to read_excel.
+    Returns (header_row_index, df_with_correct_header) to avoid reading the sheet twice.
     """
-    subprocess_keywords = (
-        "sub-process", "subprocess", "sub process",
-        "process head", "process name", "sub-processes",
-    )
-    sno_keywords = {
-        "s.no.", "s no.", "sno", "sl.no.", "sl no",
-        "s.no", "sno.", "s no", "sr.no.", "sr no",
-        "serial no", "serial no.", "s. no.", "s. no",
-    }
-
     df_raw = pd.read_excel(xls, sheet_name=sheet_name, engine="openpyxl", header=None)
 
     for idx, row in df_raw.iterrows():
         cells = [str(v).lower().strip() for v in row]
-        has_sno = any(c in sno_keywords for c in cells)
-        has_subprocess = any(any(k in c for k in subprocess_keywords) for c in cells)
+        has_sno = any(c in _SNO_KEYWORDS for c in cells)
+        has_subprocess = any(any(k in c for k in _SUBPROCESS_KEYWORDS) for c in cells)
         if has_sno and has_subprocess:
-            return int(idx)
+            header_row = int(idx)
+            df = df_raw.iloc[header_row + 1:].reset_index(drop=True)
+            df.columns = df_raw.iloc[header_row].tolist()
+            return header_row, df
 
-    return 0  # fallback: first row is the header
+    # Fallback: first row is the header
+    df = df_raw.iloc[1:].reset_index(drop=True)
+    df.columns = df_raw.iloc[0].tolist()
+    return 0, df
 
 
 def _markdown_from_xlsx(file_bytes: bytes, filename: str) -> str:
@@ -172,8 +169,7 @@ def _markdown_from_xlsx(file_bytes: bytes, filename: str) -> str:
     lines = [f"# {doc_title}"]
 
     for sheet in xls.sheet_names:
-        header_row = _find_header_row(xls, sheet)
-        df = pd.read_excel(xls, sheet_name=sheet, engine="openpyxl", header=header_row)
+        _, df = _find_header_row(xls, sheet)
 
         # Skip completely empty sheets
         if df.empty:
