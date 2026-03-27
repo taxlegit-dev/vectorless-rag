@@ -252,6 +252,7 @@ async def upload_document(
     uploaded_by_email: str = Form(...),
     domains: Optional[str] = Form(None),
     index_array: Optional[str] = Form(None),
+    company_types: Optional[str] = Form(None),
     model: str = Form("gpt-4o-2024-11-20"),
     if_add_node_text: str = Form("yes"),
     if_add_node_summary: str = Form("yes"),
@@ -333,6 +334,7 @@ async def upload_document(
         summarization=True,
         tree_json=tree,
         doc_summary=doc_summary,
+        company_types=_parse_index_array(company_types),
     )
 
     return {

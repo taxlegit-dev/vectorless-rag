@@ -76,6 +76,21 @@ def init_db() -> None:
         """,
         "ALTER TABLE rag_documents ADD COLUMN IF NOT EXISTS index_array TEXT[] NOT NULL DEFAULT '{}';",
         "ALTER TABLE rag_documents ADD COLUMN IF NOT EXISTS summarization BOOLEAN NOT NULL DEFAULT TRUE;",
+        "ALTER TABLE rag_documents ADD COLUMN IF NOT EXISTS company_types TEXT[] NOT NULL DEFAULT '{}';",
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'rag_documents' AND column_name = 'company_type'
+            ) THEN
+                UPDATE rag_documents
+                SET company_types = ARRAY[LOWER(company_type)]
+                WHERE company_type IS NOT NULL AND company_types = '{}';
+                ALTER TABLE rag_documents DROP COLUMN company_type;
+            END IF;
+        END $$;
+        """,
         "DROP TRIGGER IF EXISTS set_updated_at_rag_documents ON rag_documents;",
         """
         CREATE OR REPLACE FUNCTION set_updated_at()
@@ -121,6 +136,12 @@ def _clean_index_array(values: Optional[List[str]]) -> List[str]:
     return [v.strip() for v in values if v and v.strip()]
 
 
+def _clean_company_types(values: Optional[List[str]]) -> List[str]:
+    if not values:
+        return []
+    return [v.strip().lower() for v in values if v and v.strip()]
+
+
 def insert_rag_document(
     *,
     source_file_name: Optional[str],
@@ -130,10 +151,12 @@ def insert_rag_document(
     summarization: bool = True,
     tree_json: dict,
     doc_summary: Optional[str] = None,
+    company_types: Optional[List[str]] = None,
 ) -> str:
     domains_literal = _domains_literal(domains)
     tree_json_str = json.dumps(tree_json, ensure_ascii=False)
     cleaned_index_array = _clean_index_array(index_array)
+    cleaned_company_types = _clean_company_types(company_types)
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
@@ -144,9 +167,9 @@ def insert_rag_document(
             cur.execute(
                 """
                 INSERT INTO rag_documents (
-                    source_file_name, uploaded_by_email, domains, index_array, summarization, tree_json, doc_summary
+                    source_file_name, uploaded_by_email, domains, index_array, summarization, tree_json, doc_summary, company_types
                 ) VALUES (
-                    %s, %s, %s::domain[], %s::text[], %s, %s::jsonb, %s
+                    %s, %s, %s::domain[], %s::text[], %s, %s::jsonb, %s, %s::text[]
                 ) RETURNING id;
                 """,
                 (
@@ -157,6 +180,7 @@ def insert_rag_document(
                     summarization,
                     tree_json_str,
                     doc_summary,
+                    cleaned_company_types,
                 ),
             )
             doc_id = cur.fetchone()[0]
@@ -221,21 +245,38 @@ def get_all_rag_documents_by_domains(domains: Optional[List[str]]) -> List[tuple
 
 def get_all_rag_documents_with_meta_by_domains(
     domains: Optional[List[str]],
+    company_type: Optional[str] = None,
 ) -> List[tuple[str, dict, List[str], Optional[str]]]:
     if not domains:
         return []
     domains_literal = _domains_literal(domains)
+    clean_company_type = company_type.strip().lower() if company_type and company_type.strip() else None
+
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT id, tree_json, index_array, doc_summary
-                FROM rag_documents
-                WHERE domains && %s::domain[]
-                ORDER BY created_at DESC;
-                """,
-                (domains_literal,),
-            )
+            if clean_company_type:
+                cur.execute(
+                    """
+                    SELECT id, tree_json, index_array, doc_summary
+                    FROM rag_documents
+                    WHERE domains && %s::domain[]
+                      AND (company_types = '{}' OR %s = ANY(company_types))
+                    ORDER BY
+                      CASE WHEN %s = ANY(company_types) THEN 0 ELSE 1 END,
+                      created_at DESC;
+                    """,
+                    (domains_literal, clean_company_type, clean_company_type),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT id, tree_json, index_array, doc_summary
+                    FROM rag_documents
+                    WHERE domains && %s::domain[]
+                    ORDER BY created_at DESC;
+                    """,
+                    (domains_literal,),
+                )
             rows = cur.fetchall()
             return [
                 (str(row[0]), row[1], row[2] or [], row[3])

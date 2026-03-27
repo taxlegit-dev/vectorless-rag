@@ -18,6 +18,7 @@ class QueryRequest(BaseModel):
     model: str = "gpt-4o-mini"
     max_hops: int = 6
     domains: Optional[list[str]] = None
+    company_type: Optional[str] = None
 
 
 _STOPWORDS = {
@@ -279,12 +280,21 @@ def query_document(req: QueryRequest) -> dict:
             raise HTTPException(status_code=404, detail="Document not found")
         candidate_docs = [(doc_id, tree_json, [], None)]
     else:
-        all_docs = get_all_rag_documents_with_meta_by_domains(req.domains)
+        all_docs = get_all_rag_documents_with_meta_by_domains(req.domains, req.company_type)
         if not all_docs:
-            raise HTTPException(
-                status_code=404,
-                detail="Document not found (provide document_id or domains)",
+            fallback = ChatGPT_API(
+                model=req.model,
+                prompt=(
+                    "Answer the user's question clearly and concisely.\n\n"
+                    f"Question: {question_text}"
+                ),
             )
+            return {
+                "document_id": None,
+                "path": [],
+                "node": {"title": "fallback", "node_id": None},
+                "context": fallback,
+            }
 
         if query_terms:
             index_scored = []
